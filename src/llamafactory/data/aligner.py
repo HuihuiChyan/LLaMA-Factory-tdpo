@@ -131,6 +131,11 @@ def convert_alpaca(
         "_images": convert_images(example[dataset_attr.images]) if dataset_attr.images else None,
         "_videos": convert_videos(example[dataset_attr.videos]) if dataset_attr.videos else None,
     }
+    if "chosen_token_scores" in example.keys():
+        output["source_token_scores"] = example["source_token_scores"]
+        output["chosen_token_scores"] = example["chosen_token_scores"]
+        output["rejected_token_scores"] = example["rejected_token_scores"]
+
     return output
 
 

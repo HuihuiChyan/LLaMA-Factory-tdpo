@@ -425,6 +425,15 @@
       "rejected": "rejected"
     }
   },
+  "tdpo_demo": {
+    "file_name": "tdpo_demo.json",
+    "ranking": true,
+    "formatting": "alpaca",
+    "columns": {
+      "chosen": "chosen",
+      "rejected": "rejected"
+    }
+  },
   "dpo_mix_en": {
     "hf_hub_url": "hiyouga/DPO-En-Zh-20k",
     "subset": "en",

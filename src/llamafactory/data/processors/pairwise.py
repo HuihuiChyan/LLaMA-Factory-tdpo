@@ -63,7 +63,7 @@ def _encode_pairwise_example(
     chosen_labels = [IGNORE_INDEX] * source_len + chosen_ids
     rejected_input_ids = prompt_ids + rejected_ids
     rejected_labels = [IGNORE_INDEX] * source_len + rejected_ids
-    return chosen_input_ids, chosen_labels, rejected_input_ids, rejected_labels
+    return chosen_input_ids, chosen_labels, rejected_input_ids, rejected_labels, source_len, target_len
 
 
 def preprocess_pairwise_dataset(
@@ -82,7 +82,7 @@ def preprocess_pairwise_dataset(
             )
             continue
 
-        chosen_input_ids, chosen_labels, rejected_input_ids, rejected_labels = _encode_pairwise_example(
+        chosen_input_ids, chosen_labels, rejected_input_ids, rejected_labels, source_len, target_len = _encode_pairwise_example(
             prompt=examples["_prompt"][i],
             response=examples["_response"][i],
             system=examples["_system"][i],
@@ -94,6 +94,21 @@ def preprocess_pairwise_dataset(
             processor=processor,
             cutoff_len=data_args.cutoff_len,
         )
+        if "chosen_token_scores" in examples.keys():
+            # 对token_scores进行长度截断
+            source_token_scores = examples["source_token_scores"][i][:source_len]
+            chosen_token_scores = examples["chosen_token_scores"][i][:target_len]
+            rejected_token_scores = examples["rejected_token_scores"][i][:target_len]
+
+            chosen_token_scores = source_token_scores + chosen_token_scores
+            rejected_token_scores = source_token_scores + rejected_token_scores
+
+            assert len(chosen_input_ids) == len(chosen_token_scores)
+            assert len(rejected_input_ids) == len(rejected_token_scores)
+
+            model_inputs["chosen_token_scores"].append(chosen_token_scores)
+            model_inputs["rejected_token_scores"].append(rejected_token_scores)
+
         model_inputs["chosen_input_ids"].append(chosen_input_ids)
         model_inputs["chosen_attention_mask"].append([1] * len(chosen_input_ids))
         model_inputs["chosen_labels"].append(chosen_labels)
@@ -117,3 +132,6 @@ def print_pairwise_dataset_example(example: Dict[str, List[int]], tokenizer: "Pr
     print("rejected_inputs:\n{}".format(tokenizer.decode(example["rejected_input_ids"], skip_special_tokens=False)))
     print("rejected_label_ids:\n{}".format(example["rejected_labels"]))
     print(f"rejected_labels:\n{tokenizer.decode(valid_rejected_labels, skip_special_tokens=False)}")
+    if "chosen_token_scores" in example.keys():
+        print("chosen_token_scores:\n{}".format(example["chosen_token_scores"]))
+        print("rejected_token_scores:\n{}".format(example["rejected_token_scores"]))

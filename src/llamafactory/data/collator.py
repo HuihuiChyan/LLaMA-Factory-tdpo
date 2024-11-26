@@ -147,8 +147,34 @@ class PairwiseDataCollatorWithPadding(MultiModalDataCollatorForSeq2Seq):
                     "videos": feature["videos"],
                 }
                 concatenated_features.append(target_feature)
+        
+        batch = super().__call__(concatenated_features)
 
-        return super().__call__(concatenated_features)
+        if "chosen_token_scores" in features[0].keys():
+
+            chosen_token_scores = [feature["chosen_token_scores"] for feature in features]
+            rejected_token_scores = [feature["rejected_token_scores"] for feature in features]
+
+            max_score_length = len(batch['input_ids'][0])
+            padding_side = self.tokenizer.padding_side
+            chosen_token_scores = [
+                scores + [0.0] * (max_score_length - len(scores))
+                if padding_side == "right"
+                else [0.0] * (max_score_length - len(scores)) + scores
+                for scores in chosen_token_scores
+            ]
+            rejected_token_scores = [
+                scores + [0.0] * (max_score_length - len(scores))
+                if padding_side == "right"
+                else [0.0] * (max_score_length - len(scores)) + scores
+                for scores in rejected_token_scores
+            ]
+            # 在output_id里，最后一个位置的输出是不需要考虑的
+            chosen_token_scores = [scores[:-1] for scores in chosen_token_scores]
+            rejected_token_scores = [scores[:-1] for scores in rejected_token_scores]
+            batch["token_scores"] = torch.Tensor(chosen_token_scores + rejected_token_scores)
+
+        return batch
 
 
 @dataclass
